@@ -1,17 +1,20 @@
 prefix=/usr/local
 
 CFLAGS += -Wall
-CXXFLAGS += -D_GLIBCXX_DEBUG -std=c++11 -Wall -Werror -fmax-errors=5
+#CXXFLAGS += -D_GLIBCXX_DEBUG -std=c++11 -Wall -Werror -fmax-errors=5
+CXXFLAGS += -D_GLIBCXX_DEBUG -std=c++11 -Wall -fpermissive
 LDLIBS += -lm
 
-ifeq ($(findstring armv6,$(shell uname -m)),armv6)
+#ifeq ($(findstring armv6,$(shell uname -m)),armv6)
 # Broadcom BCM2835 SoC with 700 MHz 32-bit ARM 1176JZF-S (ARMv6 arch)
-PI_VERSION = -DRPI1
-else
+#PI_VERSION = -DRPI1
+#else
 # Broadcom BCM2836 SoC with 900 MHz 32-bit quad-core ARM Cortex-A7  (ARMv7 arch)
 # Broadcom BCM2837 SoC with 1.2 GHz 64-bit quad-core ARM Cortex-A53 (ARMv8 arch)
-PI_VERSION = -DRPI23
-endif
+#PI_VERSION = -DRPI23
+#endif
+PI_VERSION = -DRPI4
+
 
 all: ft8 gpioclk
 

@@ -17,7 +17,7 @@
 
 // ha7ilm: added RPi2 support based on a patch to PiFmRds by Cristophe
 // Jacquet and Richard Hirst: http://git.io/vn7O9
-
+#include <cstdint> 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -113,8 +113,16 @@ extern "C" {
 // the PPM correction reported by NTP and the actual frequency offset of
 // the crystal. This 2.5 PPM offset is not present in the RPi2 and RPi3.
 // This 2.5 PPM offset is compensated for here, but only for the RPi1.
+#ifdef RPI4
+#define PERI_BASE_PHYS 0xFE000000
+#define F_PLLD_CLK     750000000.0
+#define F_XTAL         54000000.0
+#define MEM_FLAG       0x04
+#else
 #ifdef RPI23
 #define F_PLLD_CLK   (500000000.0)
+#define PERI_BASE_PHYS 0x3f000000
+#define MEM_FLAG 0x04
 #else
 #ifdef RPI1
 #define F_PLLD_CLK   (500000000.0*(1-2.500e-6))
@@ -122,11 +130,12 @@ extern "C" {
 #error "RPI version macro is not defined"
 #endif
 #endif
+#endif
 // Empirical value for F_PWM_CLK that produces FT8 symbols that are 'close' to
 // 0.16s long. For some reason, despite the use of DMA, the load on the PI
 // affects the TX length of the symbols. However, the varying symbol length is
 // compensated for in the main loop.
-#define F_PWM_CLK_INIT (31156186.6125761/0.682*0.16) // TODO?
+#define F_PWM_CLK_INIT (F_PLLD_CLK/0.682*0.16) // TODO?
 
 // FT8 nominal symbol time
 #define FT8_SYMTIME (1920.0/12000.0)
@@ -141,15 +150,18 @@ extern "C" {
 // Choose proper base address depending on RPI1/RPI23 macro from makefile.
 // PERI_BASE_PHYS is the base address of the peripherals, in physical
 // address space.
+#ifdef RPI4
+#else
 #ifdef RPI23
-#define PERI_BASE_PHYS 0x3f000000
-#define MEM_FLAG 0x04
+//#define PERI_BASE_PHYS 0x3f000000
+//#define MEM_FLAG 0x04
 #else
 #ifdef RPI1
 #define PERI_BASE_PHYS 0x20000000
 #define MEM_FLAG 0x0ca
 #else
 #error "RPI version macro is not defined"
+#endif
 #endif
 #endif
 
@@ -268,8 +280,8 @@ void getRealMemPageFromPool(void ** vAddr, void **bAddr) {
     ABORT(-1);
   }
   unsigned offset = mbox.pool_cnt*4096;
-  *vAddr = (void*)(((unsigned)mbox.virt_addr) + offset);
-  *bAddr = (void*)(((unsigned)mbox.bus_addr) + offset);
+*vAddr = (void*)((uintptr_t)mbox.virt_addr + offset);
+*bAddr = (void*)((uintptr_t)mbox.bus_addr + offset);
   //printf("getRealMemoryPageFromPool bus_addr=%x virt_addr=%x\n", (unsigned)*pAddr,(unsigned)*vAddr);
   mbox.pool_cnt++;
 }
@@ -1133,6 +1145,9 @@ int main(const int argc, char * const argv[]) {
   atexit(cleanup);
   setSchedPriority(30);
 
+#ifdef RPI4
+ std::cout << "Detected Raspberry Pi version 4" << std::endl;
+#else
 #ifdef RPI1
   std::cout << "Detected Raspberry Pi version 1" << std::endl;
 #else
@@ -1140,6 +1155,7 @@ int main(const int argc, char * const argv[]) {
   std::cout << "Detected Raspberry Pi version 2/3" << std::endl;
 #else
 #error "RPI version macro is not defined"
+#endif
 #endif
 #endif
 

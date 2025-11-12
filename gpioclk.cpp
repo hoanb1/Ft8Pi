@@ -35,6 +35,7 @@ License:
 #include <sys/time.h>
 #include <getopt.h>
 #include <vector>
+#include <fstream>
 #include <iostream>
 #include <sstream>
 #include <iomanip>
@@ -141,6 +142,31 @@ void txoff()
 {
     struct GPCTL setupword = {6/*SRC*/, 0, 0, 0, 0, 1,0x5a};
     ACCESS(CM_GP0CTL) = *((int*)&setupword);
+}
+
+double get_pwm_clock() {
+    std::ifstream f("/sys/class/clk/clk_pwm/frequency");
+    if(!f.is_open()) {
+        // fallback nếu sysfs không có
+        // dùng vcgencmd
+        FILE *pipe = popen("vcgencmd measure_clock pwm", "r");
+        if(!pipe) return 250000000.0; // default giả lập Pi2/3
+        char buffer[128];
+        std::string result = "";
+        while(fgets(buffer, sizeof buffer, pipe) != NULL)
+            result += buffer;
+        pclose(pipe);
+
+        // Parse: frequency(25)=35687988
+        auto pos = result.find("=");
+        if(pos != std::string::npos)
+            return std::stod(result.substr(pos+1));
+        return 250000000.0;
+    }
+
+    double freq;
+    f >> freq;
+    return freq;
 }
 
 void handSig(const int h) {
