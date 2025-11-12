@@ -118,14 +118,37 @@ extern "C" {
 #define F_PLLD_CLK     750000000.0
 #define F_XTAL         54000000.0
 #define MEM_FLAG       0x04
+
+
+// FT8 chuẩn
+#define FT8_SYMTIME_SEC 0.16
+#define NSYM 79
+#define SAMPLE_RATE 12000.0
+
+// PWM thực tế đo từ vcgencmd
+double PWM_REAL_FREQ = 375007328.0;  // Hz
+
+// Tính F_PWM_CLK_INIT đúng TX 12.64 s
+double calc_pwm_clk_init(double pwm_freq) {
+    double samples_per_symbol = FT8_SYMTIME_SEC * SAMPLE_RATE; // 1920
+    double total_symbol_time = FT8_SYMTIME_SEC * NSYM;          // ~12.64 s chuẩn
+    double actual_tx_time = 0.8;                              // đo được Pi4 trước
+    return samples_per_symbol * (pwm_freq / SAMPLE_RATE) * (total_symbol_time / actual_tx_time);
+}
+
+double F_PWM_CLK_INIT = calc_pwm_clk_init(PWM_REAL_FREQ);
 #else
 #ifdef RPI23
 #define F_PLLD_CLK   (500000000.0)
 #define PERI_BASE_PHYS 0x3f000000
 #define MEM_FLAG 0x04
+#define F_PWM_CLK_INIT (F_PLLD_CLK/0.682*0.16) // TODO?
+
 #else
 #ifdef RPI1
 #define F_PLLD_CLK   (500000000.0*(1-2.500e-6))
+#define F_PWM_CLK_INIT (F_PLLD_CLK/0.682*0.16) // TODO?
+
 #else
 #error "RPI version macro is not defined"
 #endif
@@ -135,7 +158,7 @@ extern "C" {
 // 0.16s long. For some reason, despite the use of DMA, the load on the PI
 // affects the TX length of the symbols. However, the varying symbol length is
 // compensated for in the main loop.
-#define F_PWM_CLK_INIT (F_PLLD_CLK/0.682*0.16) // TODO?
+//#define F_PWM_CLK_INIT (F_PLLD_CLK/0.682*0.16) // TODO?
 
 // FT8 nominal symbol time
 #define FT8_SYMTIME (1920.0/12000.0)
@@ -1147,6 +1170,7 @@ int main(const int argc, char * const argv[]) {
 
 #ifdef RPI4
  std::cout << "Detected Raspberry Pi version 4" << std::endl;
+
 #else
 #ifdef RPI1
   std::cout << "Detected Raspberry Pi version 1" << std::endl;
