@@ -1,3 +1,5 @@
 wspr
 gpioclk
 mailbox.o
+*.o
+ft8
